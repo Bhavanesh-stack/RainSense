@@ -1,0 +1,1564 @@
+# Build RainSense AI — AI-Based Rooftop Rainwater Harvesting Assessment System
+
+## 1. Project Objective
+
+Build a complete, working web application called **RainSense AI**.
+
+RainSense AI is an intelligent rooftop rainwater harvesting assessment and recommendation system. A user should be able to upload a rooftop image, provide basic rooftop and location information, and receive an AI-assisted assessment containing:
+
+* Rooftop/obstacle detection
+* Roof characteristics
+* Rainfall information
+* Estimated annual harvestable rainwater
+* Rainwater harvesting readiness score
+* Recommended storage capacity
+* Recommended harvesting components
+* Estimated installation cost
+* Estimated savings
+* Estimated payback period
+* Explanation of why the system produced the score
+* Downloadable PDF assessment report
+* Assessment history
+
+The application should look like a polished final-year/college project rather than a basic CRUD application.
+
+---
+
+# 2. Technology Stack
+
+Use the following stack unless there is a strong technical reason to change it.
+
+## Frontend
+
+* React
+* Vite
+* Tailwind CSS
+* React Router
+* Axios
+* Recharts
+* Lucide React icons
+
+## Backend
+
+* Python
+* FastAPI
+* Uvicorn
+* Pydantic
+* OpenCV
+* Ultralytics YOLO
+* NumPy
+* Requests/httpx
+
+## Database
+
+Use MongoDB.
+
+MongoDB should store:
+
+* Users
+* Assessments
+* Analysis results
+* Recommendations
+* Assessment timestamps
+
+## Report Generation
+
+Use Python to generate PDF reports.
+
+---
+
+# 3. Overall Architecture
+
+Implement the following architecture:
+
+```text
+User
+ |
+ v
+React Frontend
+ |
+ | REST API
+ v
+FastAPI Backend
+ |
+ +--------------------+
+ |                    |
+ v                    v
+Image Processing    Weather API
+ |                    |
+ v                    |
+YOLOv8                |
+ |                    |
+ +---------+----------+
+           |
+           v
+   Rainwater Calculation
+           |
+           v
+    Readiness Score
+           |
+           v
+    Recommendation Engine
+           |
+           v
+      MongoDB
+           |
+           v
+    Results Dashboard
+           |
+           v
+       PDF Report
+```
+
+Keep frontend and backend separated.
+
+Recommended structure:
+
+```text
+rainsense-ai/
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   ├── utils/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── package.json
+│   └── ...
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── models/
+│   │   ├── utils/
+│   │   └── database/
+│   ├── requirements.txt
+│   └── ...
+│
+├── README.md
+└── .env.example
+```
+
+---
+
+# 4. UI/UX Requirements
+
+Create a modern environmental/AI-themed interface.
+
+The design should communicate:
+
+* Rain
+* Water conservation
+* Sustainability
+* Artificial intelligence
+* Smart infrastructure
+
+Use a clean professional dashboard.
+
+Do not make the UI look like a generic template.
+
+Use:
+
+* Rounded cards
+* Subtle shadows
+* Clear typography
+* Responsive layouts
+* Modern icons
+* Progress indicators
+* Charts
+* Status badges
+* Good spacing
+* Mobile responsiveness
+* Accessible buttons and form controls
+
+Avoid excessive animations.
+
+Use subtle transitions only where they improve usability.
+
+---
+
+# 5. Pages
+
+Create the following pages.
+
+## Page 1 — Landing Page
+
+Route:
+
+```text
+/
+```
+
+Include:
+
+### Header
+
+Logo:
+
+```text
+RainSense AI
+```
+
+Navigation:
+
+* Home
+* How It Works
+* Features
+* About
+* Login
+* Get Started
+
+### Hero section
+
+Title:
+
+```text
+Turn Your Rooftop Into a Water Resource
+```
+
+Subtitle:
+
+```text
+AI-powered rooftop analysis and rainwater harvesting recommendations for smarter and more sustainable water management.
+```
+
+Buttons:
+
+```text
+Analyze My Rooftop
+Learn How It Works
+```
+
+Include an attractive rooftop/rain/water visual.
+
+### Statistics section
+
+Show example system capabilities:
+
+```text
+AI Rooftop Analysis
+Rainfall Intelligence
+Water Harvest Estimation
+Smart Recommendations
+```
+
+Do not present fake real-world accuracy statistics as factual claims.
+
+---
+
+# 6. How It Works Section
+
+Explain the workflow:
+
+```text
+1. Upload Rooftop Image
+        ↓
+2. Enter Location & Roof Details
+        ↓
+3. AI Analyzes Rooftop
+        ↓
+4. Rainfall Data Is Retrieved
+        ↓
+5. Harvestable Water Is Calculated
+        ↓
+6. Readiness Score Is Generated
+        ↓
+7. System Provides Recommendations
+```
+
+Use visual cards.
+
+---
+
+# 7. Authentication
+
+Create:
+
+```text
+/login
+/register
+```
+
+Registration fields:
+
+* Name
+* Email
+* Password
+* Confirm Password
+
+Login:
+
+* Email
+* Password
+
+For the prototype, implement secure password hashing on the backend.
+
+Do not store plaintext passwords.
+
+Protect authenticated dashboard routes.
+
+---
+
+# 8. Assessment Page
+
+Route:
+
+```text
+/assessment
+```
+
+This is the core page.
+
+Create a multi-section form.
+
+## Section A — Rooftop Image
+
+Allow:
+
+* Drag and drop
+* File selection
+* Image preview
+* Remove image
+* Replace image
+
+Accepted:
+
+```text
+JPG
+JPEG
+PNG
+WEBP
+```
+
+Validate file size.
+
+Show a clear error for invalid files.
+
+---
+
+# 9. Location
+
+Provide:
+
+```text
+Location
+```
+
+Allow the user to enter:
+
+```text
+City
+State
+Country
+```
+
+Example:
+
+```text
+Chennai
+Tamil Nadu
+India
+```
+
+Optionally provide browser location assistance, but do not require precise location.
+
+---
+
+# 10. Rooftop Information
+
+Ask for:
+
+### Roof area
+
+```text
+Roof Area: ____ m²
+```
+
+### Roof material
+
+Dropdown:
+
+```text
+RCC / Concrete
+Metal
+Tile
+Other
+```
+
+### Roof type
+
+```text
+Flat
+Sloped
+Unknown
+```
+
+### Number of floors
+
+Numeric field.
+
+### Existing rainwater harvesting system
+
+```text
+Yes
+No
+Unknown
+```
+
+---
+
+# 11. Backend API
+
+Create REST APIs.
+
+## Authentication
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+```
+
+## Assessment
+
+```text
+POST /api/assessments
+GET /api/assessments
+GET /api/assessments/{id}
+DELETE /api/assessments/{id}
+```
+
+## Analysis
+
+```text
+POST /api/analyze
+```
+
+## Report
+
+```text
+GET /api/reports/{assessment_id}
+```
+
+Use proper HTTP status codes.
+
+Return meaningful error messages.
+
+---
+
+# 12. Image Processing
+
+When an image is uploaded:
+
+```text
+Original Image
+      ↓
+Validate
+      ↓
+Resize
+      ↓
+Noise Reduction
+      ↓
+Contrast Enhancement
+      ↓
+Normalization
+      ↓
+AI Detection
+```
+
+Use OpenCV.
+
+Keep image-processing code inside a dedicated service.
+
+For example:
+
+```text
+backend/app/services/image_processing.py
+```
+
+Do not put all logic into `main.py`.
+
+---
+
+# 13. YOLOv8 Integration
+
+Integrate YOLO using the Ultralytics package.
+
+Create a dedicated service:
+
+```text
+backend/app/services/yolo_service.py
+```
+
+The system should attempt to detect:
+
+* Roof
+* Solar panels
+* Water tanks
+* Large rooftop obstacles
+* Other relevant objects if the available model supports them
+
+Important:
+
+Do not falsely claim that a generic pretrained YOLO model can reliably detect specialized rooftop categories if those classes are not present in the model.
+
+Create an abstraction so that a custom-trained RainSense model can be plugged in later.
+
+Example:
+
+```python
+class RoofAnalyzer:
+    def analyze(self, image):
+        ...
+```
+
+Return structured data:
+
+```json
+{
+  "roof_detected": true,
+  "obstacles": [],
+  "confidence": 0.91
+}
+```
+
+If a trained model is unavailable, implement a clearly identified demo/fallback analysis mode so that the application remains functional.
+
+Do not fabricate AI predictions.
+
+---
+
+# 14. Rainfall Data
+
+Create a weather service:
+
+```text
+backend/app/services/weather_service.py
+```
+
+Use a configurable weather/rainfall API.
+
+API credentials must come from environment variables.
+
+Never hard-code API keys.
+
+Example:
+
+```text
+OPENWEATHER_API_KEY=
+```
+
+Create fallback behavior if the API is unavailable.
+
+The UI should clearly indicate whether rainfall data came from:
+
+```text
+Live API
+Cached data
+User-provided value
+Demo mode
+```
+
+Do not silently present demo data as live data.
+
+---
+
+# 15. Rainwater Calculation
+
+Implement the standard runoff calculation:
+
+```text
+V = A × R × C
+```
+
+Where:
+
+```text
+V = estimated harvested water
+A = effective roof area
+R = rainfall depth
+C = runoff coefficient
+```
+
+Make sure units are consistent.
+
+If rainfall is given in millimetres:
+
+```text
+R_m = rainfall_mm / 1000
+```
+
+Then:
+
+```text
+volume_m3 = roof_area_m2 × rainfall_m × runoff_coefficient
+```
+
+Convert to litres:
+
+```text
+litres = volume_m3 × 1000
+```
+
+Create a separate calculation service:
+
+```text
+backend/app/services/rainwater_calculator.py
+```
+
+---
+
+# 16. Runoff Coefficient
+
+Use configurable coefficients.
+
+Example defaults:
+
+```text
+RCC / Concrete → 0.80–0.90
+Metal          → 0.80–0.95
+Tile           → 0.70–0.90
+Other          → 0.70
+```
+
+Do not imply that these are universally exact.
+
+Store the selected coefficient in the assessment result.
+
+Allow configuration from one central file.
+
+---
+
+# 17. Readiness Score
+
+Create a transparent score from 0–100.
+
+Possible factors:
+
+```text
+Roof area
+Roof type/slope
+Roof material
+Rainfall
+Detected obstacles
+Existing harvesting infrastructure
+```
+
+Do not create an opaque AI score.
+
+Show the user how the score was calculated.
+
+Example:
+
+```text
+Roof Area              25 points
+Rainfall               25 points
+Roof Material          20 points
+Roof Condition         15 points
+Obstacles               15 points
+                       ----
+Total                  100 points
+```
+
+Make the weights configurable.
+
+---
+
+# 18. Score Classification
+
+Use:
+
+```text
+80–100 → Highly Suitable
+50–79  → Moderately Suitable
+0–49   → Low Suitability
+```
+
+Use neutral wording such as:
+
+```text
+Estimated suitability category
+```
+
+Include a disclaimer that the score is an assessment aid and not a substitute for professional structural/plumbing/site evaluation.
+
+---
+
+# 19. Recommendation Engine
+
+Create:
+
+```text
+backend/app/services/recommendation_service.py
+```
+
+Recommendations should depend on calculated results.
+
+Generate:
+
+### Storage recommendation
+
+For example:
+
+```text
+Suggested storage capacity: 5,000 L
+```
+
+Do not use arbitrary values.
+
+Create a simple configurable method based on:
+
+* estimated harvestable water
+* household demand
+* rainfall pattern
+* available roof area
+
+### Components
+
+Recommend relevant components:
+
+```text
+First-flush diverter
+Filter
+Storage tank
+Recharge pit
+Gutters
+Downpipes
+Overflow system
+```
+
+Only recommend components relevant to the assessment.
+
+---
+
+# 20. Cost Estimation
+
+Create configurable cost assumptions.
+
+Example:
+
+```text
+Tank cost
+Gutter cost
+Filter cost
+Pipe cost
+Labour cost
+Installation cost
+```
+
+Keep all assumptions in one configuration file.
+
+Display:
+
+```text
+Estimated installation cost
+```
+
+Clearly label it as an estimate.
+
+Do not present it as a contractor quotation.
+
+---
+
+# 21. Savings and Payback
+
+Estimate annual savings using configurable assumptions.
+
+Show:
+
+```text
+Estimated annual water captured
+Estimated annual monetary savings
+Estimated installation cost
+Estimated payback period
+```
+
+Formula:
+
+```text
+Payback Period =
+Estimated Installation Cost /
+Estimated Annual Savings
+```
+
+If annual savings are zero or unavailable, do not divide by zero.
+
+Instead show:
+
+```text
+Payback period cannot be estimated from the available data.
+```
+
+---
+
+# 22. Results Dashboard
+
+Route:
+
+```text
+/results/:assessmentId
+```
+
+Create a polished dashboard.
+
+Top cards:
+
+```text
+Roof Area
+Annual Rainfall
+Harvestable Water
+Readiness Score
+```
+
+Example:
+
+```text
+92 m²
+1,220 mm
+95,400 L/year
+91/100
+```
+
+Do not hard-code these values.
+
+They must come from the backend.
+
+---
+
+# 23. Charts
+
+Use Recharts.
+
+Create charts such as:
+
+### Monthly rainfall
+
+Bar chart.
+
+### Monthly potential water collection
+
+Bar/line chart.
+
+### Water usage vs harvested water
+
+Comparison chart.
+
+### Score breakdown
+
+Radar chart or horizontal progress bars.
+
+Make charts responsive.
+
+---
+
+# 24. AI Explanation
+
+Add a section:
+
+```text
+Why did RainSense give this assessment?
+```
+
+Example:
+
+```text
+Positive factors:
+✓ Adequate rooftop area
+✓ Favorable rainfall conditions
+✓ Suitable roof material
+
+Factors requiring attention:
+⚠ Rooftop obstacles detected
+⚠ Storage capacity should be selected according to actual demand
+```
+
+Do not invent detected obstacles.
+
+Generate explanations from actual assessment data.
+
+---
+
+# 25. Dashboard
+
+Route:
+
+```text
+/dashboard
+```
+
+Display:
+
+```text
+Welcome, <name>
+```
+
+Cards:
+
+```text
+Total Assessments
+Average Readiness Score
+Estimated Water Potential
+Latest Assessment
+```
+
+Add:
+
+```text
+Recent Assessments
+```
+
+Table:
+
+```text
+Date
+Location
+Roof Area
+Harvestable Water
+Score
+Status
+Action
+```
+
+Actions:
+
+```text
+View
+Download Report
+Delete
+```
+
+---
+
+# 26. Assessment History
+
+Allow users to see previous assessments.
+
+Each assessment should contain:
+
+```text
+Assessment ID
+Date
+Location
+Roof area
+Rainfall
+Harvestable water
+Readiness score
+Recommendation
+```
+
+---
+
+# 27. PDF Report
+
+Generate a professional PDF.
+
+Report structure:
+
+```text
+RAIN SENSE AI
+Rooftop Rainwater Harvesting Assessment
+
+-----------------------------------
+
+User Information
+
+Name:
+Location:
+Assessment Date:
+
+-----------------------------------
+
+Rooftop Information
+
+Roof Area:
+Roof Material:
+Roof Type:
+
+-----------------------------------
+
+AI Analysis
+
+Roof Detected:
+Obstacles:
+Detection Confidence:
+
+-----------------------------------
+
+Rainfall Information
+
+Annual Rainfall:
+Data Source:
+
+-----------------------------------
+
+Water Harvest Estimation
+
+Harvestable Water:
+Runoff Coefficient:
+
+-----------------------------------
+
+Readiness Assessment
+
+Score:
+Category:
+
+Score Breakdown:
+
+-----------------------------------
+
+Recommendations
+
+Storage:
+Filtration:
+First Flush:
+Recharge:
+Other Components:
+
+-----------------------------------
+
+Financial Estimate
+
+Estimated Installation Cost:
+Estimated Annual Savings:
+Estimated Payback:
+
+-----------------------------------
+
+Environmental Impact
+
+Estimated annual water captured.
+
+-----------------------------------
+
+Disclaimer
+```
+
+Include the uploaded rooftop image where appropriate.
+
+---
+
+# 28. MongoDB Schema
+
+Create collections such as:
+
+```text
+users
+assessments
+```
+
+Assessment document should contain fields similar to:
+
+```json
+{
+  "user_id": "...",
+  "location": {
+    "city": "...",
+    "state": "...",
+    "country": "..."
+  },
+  "roof": {
+    "area_m2": 92,
+    "material": "RCC",
+    "type": "Flat"
+  },
+  "rainfall": {
+    "annual_mm": 1220,
+    "source": "..."
+  },
+  "ai_analysis": {
+    "roof_detected": true,
+    "obstacles": []
+  },
+  "calculation": {
+    "runoff_coefficient": 0.85,
+    "harvestable_litres": 95400
+  },
+  "score": {
+    "total": 91,
+    "category": "Highly Suitable"
+  },
+  "recommendations": {
+    "storage_litres": 5000
+  },
+  "created_at": "..."
+}
+```
+
+---
+
+# 29. Security
+
+Implement basic security best practices.
+
+Requirements:
+
+* Password hashing
+* JWT authentication
+* Protected API endpoints
+* Environment variables
+* Input validation
+* File type validation
+* File size limits
+* CORS configuration
+* No API keys in frontend code
+* No secrets committed to Git
+
+Create:
+
+```text
+.env.example
+```
+
+Never commit:
+
+```text
+.env
+```
+
+---
+
+# 30. Error Handling
+
+Every API should return useful errors.
+
+Examples:
+
+```text
+Image is required.
+Invalid image format.
+Image exceeds maximum size.
+Invalid roof area.
+Rainfall data unavailable.
+Unable to process rooftop image.
+Database connection failed.
+```
+
+Frontend should show friendly error messages rather than raw backend exceptions.
+
+---
+
+# 31. Loading States
+
+While analysis is running, show a professional progress interface.
+
+Example:
+
+```text
+Analyzing your rooftop...
+
+✓ Image uploaded
+✓ Image preprocessing
+✓ Rooftop analysis
+● Retrieving rainfall data
+○ Calculating water potential
+○ Generating recommendations
+```
+
+Do not fake progress percentages.
+
+The status should correspond to actual backend stages where practical.
+
+---
+
+# 32. Demo Mode
+
+Because external APIs and trained ML models may not always be available during development, implement a clearly labeled:
+
+```text
+Demo Mode
+```
+
+Demo mode should:
+
+* use predefined sample rainfall data
+* use deterministic sample analysis
+* allow the entire UI workflow to be demonstrated
+
+The UI must clearly say:
+
+```text
+Demo Mode — results are illustrative.
+```
+
+Never disguise demo results as real AI results.
+
+---
+
+# 33. Responsive Design
+
+The application must work on:
+
+* Desktop
+* Laptop
+* Tablet
+* Mobile
+
+The dashboard should adapt to small screens.
+
+The assessment form should remain usable on mobile.
+
+---
+
+# 34. Code Quality
+
+Follow these rules:
+
+* Modular components
+* Reusable functions
+* Clear variable names
+* Type-safe/validated API schemas where practical
+* No huge files
+* No duplicate code
+* No hard-coded API keys
+* No unnecessary dependencies
+* Comments only where useful
+* Keep business logic outside route handlers
+* Keep database logic separated
+
+---
+
+# 35. Environment Variables
+
+Create:
+
+```text
+backend/.env.example
+```
+
+Example:
+
+```text
+MONGODB_URI=
+JWT_SECRET=
+OPENWEATHER_API_KEY=
+YOLO_MODEL_PATH=
+```
+
+Frontend:
+
+```text
+VITE_API_BASE_URL=
+```
+
+---
+
+# 36. README
+
+Create a complete README containing:
+
+## Project Description
+
+What RainSense AI does.
+
+## Features
+
+List all implemented features.
+
+## Tech Stack
+
+Frontend/backend/database/AI.
+
+## Installation
+
+Give exact commands.
+
+Example:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Backend:
+
+```bash
+cd backend
+python -m venv venv
+```
+
+Then activation commands for Windows/Linux/macOS.
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+## Environment Variables
+
+Explain every required variable.
+
+## API Documentation
+
+Explain available endpoints.
+
+## Project Architecture
+
+Explain frontend/backend flow.
+
+## Limitations
+
+Clearly document:
+
+* Image-based roof estimation limitations
+* Weather API dependency
+* YOLO model limitations
+* Cost estimate limitations
+* Need for professional site verification
+
+---
+
+# 37. Development Strategy
+
+Do NOT attempt to build everything simultaneously.
+
+Implement in this order:
+
+### Phase 1
+
+```text
+Project setup
+Frontend
+Backend
+Database
+```
+
+### Phase 2
+
+```text
+Registration
+Login
+Dashboard
+```
+
+### Phase 3
+
+```text
+Assessment form
+Image upload
+Image preview
+```
+
+### Phase 4
+
+```text
+OpenCV processing
+YOLO integration
+```
+
+### Phase 5
+
+```text
+Rainfall API
+Rainwater calculation
+```
+
+### Phase 6
+
+```text
+Readiness score
+Recommendation engine
+```
+
+### Phase 7
+
+```text
+Results dashboard
+Charts
+```
+
+### Phase 8
+
+```text
+PDF report
+Assessment history
+```
+
+### Phase 9
+
+```text
+Testing
+Bug fixing
+UI polish
+README
+```
+
+Only after all of the above works should you add optional advanced features.
+
+---
+
+# 38. Testing
+
+Create tests for:
+
+### Calculation
+
+Test:
+
+```text
+V = A × R × C
+```
+
+with known inputs.
+
+### Validation
+
+Test:
+
+* Negative roof area
+* Missing location
+* Invalid image
+* Oversized image
+
+### Authentication
+
+Test:
+
+* Registration
+* Login
+* Invalid password
+* Protected routes
+
+### API
+
+Test:
+
+```text
+POST /api/analyze
+GET /api/assessments
+GET /api/assessments/{id}
+```
+
+### Frontend
+
+Test:
+
+* Upload
+* Form validation
+* Results display
+* Dashboard
+* PDF download
+
+---
+
+# 39. Important Academic Presentation Requirements
+
+The application should make it easy to demonstrate the project.
+
+Create a sample workflow:
+
+```text
+Login
+ ↓
+Dashboard
+ ↓
+New Assessment
+ ↓
+Upload Rooftop Image
+ ↓
+Enter Roof Area
+ ↓
+Enter Location
+ ↓
+Analyze
+ ↓
+AI Analysis
+ ↓
+Rainfall Data
+ ↓
+Water Calculation
+ ↓
+Readiness Score
+ ↓
+Recommendation
+ ↓
+Charts
+ ↓
+Download PDF
+```
+
+The entire workflow should work without manually editing database records.
+
+---
+
+# 40. Final Deliverable
+
+The final application must have:
+
+```text
+✓ Modern landing page
+✓ Registration/Login
+✓ Dashboard
+✓ Rooftop image upload
+✓ Image preprocessing
+✓ YOLO integration
+✓ Rainfall data integration
+✓ Rainwater calculation
+✓ Readiness score
+✓ Transparent score breakdown
+✓ Recommendation engine
+✓ Storage recommendation
+✓ Cost estimate
+✓ Savings estimate
+✓ Payback calculation
+✓ Charts
+✓ Assessment history
+✓ MongoDB storage
+✓ PDF report
+✓ Error handling
+✓ Loading states
+✓ Responsive UI
+✓ Demo mode
+✓ README
+✓ .env.example
+```
+
+---
+
+# 41. Critical Instruction to the Coding Agent
+
+Do not just generate a collection of disconnected UI screens.
+
+Build a **fully connected working application**.
+
+The frontend must communicate with the backend.
+
+The backend must perform real calculations.
+
+The database must actually store assessments.
+
+The results page must use actual backend responses.
+
+The PDF must contain the actual assessment data.
+
+Do not hard-code the final dashboard values.
+
+Do not fabricate AI predictions.
+
+Do not claim live weather data when demo/cached data is being used.
+
+Do not expose API keys.
+
+If a dependency such as a custom YOLO model is unavailable, implement a clean fallback/demo mode and clearly label it.
+
+Prioritize a stable end-to-end working workflow over unnecessary advanced features.
+
+Before finishing, run the application, test the complete assessment workflow, fix errors, and make sure the project can be started using the commands documented in the README.
+
+## Success condition
+
+A user should be able to open RainSense AI, register, log in, upload a rooftop image, enter rooftop information and location, run an assessment, receive calculated rainwater potential and a transparent readiness score, view recommendations and charts, save the assessment, and download a professional PDF report.
+
+Build the project incrementally and keep the code clean, modular, and production-style.
