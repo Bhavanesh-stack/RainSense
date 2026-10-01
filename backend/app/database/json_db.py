@@ -103,30 +103,29 @@ class JSONCollection:
 
             return DeleteResult()
 
-    async def aggregate(self, pipeline: List[Dict[str, Any]]):
-        async with self.lock:
-            data = self._read_data()
-            # Simple match + group for dashboard stats
-            matched = data
-            for stage in pipeline:
-                if "$match" in stage:
-                    q = stage["$match"]
-                    matched = [d for d in matched if all(d.get(k) == v for k, v in q.items())]
-                elif "$group" in stage:
-                    if not matched:
-                        return JSONCursorFromList([])
-                    total = len(matched)
-                    scores = [d.get("score", {}).get("total", 0) for d in matched]
-                    waters = [d.get("calculation", {}).get("harvestable_litres", 0) for d in matched]
-                    avg_score = sum(scores) / total if total > 0 else 0
-                    total_water = sum(waters)
-                    return JSONCursorFromList([{
-                        "_id": None,
-                        "total": total,
-                        "avg_score": avg_score,
-                        "total_water": total_water,
-                    }])
-            return JSONCursorFromList(matched)
+    def aggregate(self, pipeline: List[Dict[str, Any]]):
+        data = self._read_data()
+        # Simple match + group for dashboard stats
+        matched = data
+        for stage in pipeline:
+            if "$match" in stage:
+                q = stage["$match"]
+                matched = [d for d in matched if all(d.get(k) == v for k, v in q.items())]
+            elif "$group" in stage:
+                if not matched:
+                    return JSONCursorFromList([])
+                total = len(matched)
+                scores = [d.get("score", {}).get("total", 0) for d in matched]
+                waters = [d.get("calculation", {}).get("harvestable_litres", 0) for d in matched]
+                avg_score = sum(scores) / total if total > 0 else 0
+                total_water = sum(waters)
+                return JSONCursorFromList([{
+                    "_id": None,
+                    "total": total,
+                    "avg_score": avg_score,
+                    "total_water": total_water,
+                }])
+        return JSONCursorFromList(matched)
 
 
 class JSONCursor:
