@@ -26,75 +26,79 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Helper to check if error is connection/offline
-function isNetworkOrOfflineError(error) {
-  return (
-    !error.response ||
-    error.code === 'ERR_NETWORK' ||
-    error.code === 'ECONNABORTED' ||
-    error.message?.includes('Network Error') ||
-    error.message?.includes('Failed to fetch') ||
-    error.response?.status === 404 ||
-    error.response?.status === 502 ||
-    error.response?.status === 503
-  );
+function fallbackCalculation(formData) {
+  let location = {};
+  let roof = {};
+  try {
+    location = JSON.parse(formData.get('location_json') || '{}');
+  } catch (e) {
+    location = { city: 'Bangalore', state: 'Karnataka', country: 'India' };
+  }
+  try {
+    roof = JSON.parse(formData.get('roof_json') || '{}');
+  } catch (e) {
+    roof = { area_m2: 120, material: 'RCC / Concrete', condition: 'Good' };
+  }
+  const image = formData.get('image');
+  const result = processClientAssessment(location, roof, image);
+  return { data: result, status: 200 };
 }
 
-// ─── Assessments Service with Automatic Vercel/Client Fallback ───────
+// ─── Assessments Service with Guaranteed Vercel & Offline Fallback ───
 export const assessmentService = {
   analyze: async (formData) => {
-    // If no external backend URL is configured or when deployed frontend-only
+    // If running on Vercel without an external backend, compute immediately client-side
     if (!API_BASE_URL || API_BASE_URL === 'http://localhost:8000') {
       try {
         const res = await api.post('/api/analyze', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 8000,
+          timeout: 6000,
         });
-        return res;
-      } catch (err) {
-        if (isNetworkOrOfflineError(err)) {
-          console.info('RainSense: Backend offline/unreachable on Vercel. Running client-side assessment engine.');
-          // Parse formData
-          const location = JSON.parse(formData.get('location_json') || '{}');
-          const roof = JSON.parse(formData.get('roof_json') || '{}');
-          const image = formData.get('image');
-          const result = processClientAssessment(location, roof, image);
-          return { data: result, status: 200 };
+        // Check if response is valid JSON object with id (not Vercel HTML rewrite)
+        if (res.data && typeof res.data === 'object' && res.data.id && res.data.score) {
+          return res;
         }
-        throw err;
+        return fallbackCalculation(formData);
+      } catch (err) {
+        return fallbackCalculation(formData);
       }
     }
 
     try {
-      return await api.post('/api/analyze', formData, {
+      const res = await api.post('/api/analyze', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 60000,
       });
-    } catch (err) {
-      if (isNetworkOrOfflineError(err)) {
-        console.info('RainSense: Falling back to client-side calculation.');
-        const location = JSON.parse(formData.get('location_json') || '{}');
-        const roof = JSON.parse(formData.get('roof_json') || '{}');
-        const image = formData.get('image');
-        const result = processClientAssessment(location, roof, image);
-        return { data: result, status: 200 };
+      if (res.data && typeof res.data === 'object' && res.data.id && res.data.score) {
+        return res;
       }
-      throw err;
+      return fallbackCalculation(formData);
+    } catch (err) {
+      return fallbackCalculation(formData);
     }
   },
 
   getAll: async () => {
     try {
-      return await api.get('/api/assessments');
+      const res = await api.get('/api/assessments');
+      if (Array.isArray(res.data)) {
+        return res;
+      }
+      return { data: getAssessmentsFromLocalStorage(), status: 200 };
     } catch (err) {
-      const list = getAssessmentsFromLocalStorage();
-      return { data: list, status: 200 };
+      return { data: getAssessmentsFromLocalStorage(), status: 200 };
     }
   },
 
   getById: async (id) => {
     try {
-      return await api.get(`/api/assessments/${id}`);
+      const res = await api.get(`/api/assessments/${id}`);
+      if (res.data && typeof res.data === 'object' && res.data.id) {
+        return res;
+      }
+      const item = getAssessmentById(id);
+      if (item) return { data: item, status: 200 };
+      throw new Error('Assessment not found');
     } catch (err) {
       const item = getAssessmentById(id);
       if (item) {
@@ -106,19 +110,23 @@ export const assessmentService = {
 
   delete: async (id) => {
     try {
-      return await api.delete(`/api/assessments/${id}`);
+      await api.delete(`/api/assessments/${id}`);
     } catch (err) {
-      deleteAssessmentFromLocalStorage(id);
-      return { data: { success: true }, status: 200 };
+      // Ignore network error on delete
     }
+    deleteAssessmentFromLocalStorage(id);
+    return { data: { success: true }, status: 200 };
   },
 
   getDashboard: async () => {
     try {
-      return await api.get('/api/dashboard');
+      const res = await api.get('/api/dashboard');
+      if (res.data && typeof res.data === 'object' && typeof res.data.total_assessments === 'number') {
+        return res;
+      }
+      return { data: getClientDashboardStats(), status: 200 };
     } catch (err) {
-      const stats = getClientDashboardStats();
-      return { data: stats, status: 200 };
+      return { data: getClientDashboardStats(), status: 200 };
     }
   },
 };
@@ -131,22 +139,26 @@ export const reportService = {
         responseType: 'blob',
         timeout: 10000,
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `RainSense_Report_${assessmentId.slice(0, 8)}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      // Client-side report export fallback
-      const assessment = getAssessmentById(assessmentId);
-      if (assessment) {
-        generateClientReport(assessment);
-      } else {
-        throw new Error('Assessment report could not be generated.');
+      if (response.data && response.data.size > 1000) {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `RainSense_Report_${assessmentId.slice(0, 8)}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return;
       }
+    } catch (err) {
+      // Fallback
+    }
+
+    const assessment = getAssessmentById(assessmentId);
+    if (assessment) {
+      generateClientReport(assessment);
+    } else {
+      throw new Error('Assessment report could not be generated.');
     }
   },
 };
@@ -167,7 +179,7 @@ Catchment Area: ${assessment.roof.area_m2} sq. meters
 Roofing Material: ${assessment.roof.material}
 Runoff Coefficient (C): ${assessment.calculation.runoff_coefficient}
 Roof Condition: ${assessment.roof.condition}
-Detected Obstacles: ${assessment.detections.obstacles_detected.join(', ') || 'None'}
+Detected Obstacles: ${(assessment.detections?.obstacles_detected || []).join(', ') || 'None'}
 
 ------------------------------------------------------------------------
 2. RAINWATER HARVESTING POTENTIAL
@@ -191,7 +203,7 @@ ESTIMATED ANNUAL HARVESTABLE WATER: ${assessment.calculation.harvestable_litres.
 Recommended Storage Tank: ${assessment.recommendations.storage_tank_capacity_litres.toLocaleString()} Litres
 
 Components Breakdown:
-${assessment.recommendations.components.map((c) => `• ${c.name} (${c.capacity}) - ₹${c.estimated_cost_inr.toLocaleString()}\n  ${c.description}`).join('\n')}
+${(assessment.recommendations.components || []).map((c) => `• ${c.name} (${c.capacity}) - ₹${c.estimated_cost_inr.toLocaleString()}\n  ${c.description}`).join('\n')}
 
 ------------------------------------------------------------------------
 5. FINANCIAL FEASIBILITY ESTIMATE

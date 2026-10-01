@@ -4,7 +4,7 @@ import { assessmentService } from '../services/api';
 import AnalysisProgress from '../components/AnalysisProgress';
 import {
   Upload, Image as ImageIcon, X, MapPin, Home, Ruler, Layers,
-  Building2, Droplets, ChevronRight, AlertTriangle, Loader2
+  Building2, Droplets, ChevronRight, AlertTriangle, Sparkles
 } from 'lucide-react';
 
 const ROOF_MATERIALS = ['RCC / Concrete', 'Metal', 'Tile', 'Other'];
@@ -19,9 +19,9 @@ export default function AssessmentPage() {
   // Form state
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [location, setLocation] = useState({ city: '', state: '', country: 'India' });
+  const [location, setLocation] = useState({ city: 'Bangalore', state: 'Karnataka', country: 'India' });
   const [roof, setRoof] = useState({
-    area_m2: '',
+    area_m2: '120',
     material: 'RCC / Concrete',
     roof_type: 'Flat',
     floors: 1,
@@ -54,6 +54,45 @@ export default function AssessmentPage() {
     if (file) handleImageSelect(file);
   }, [handleImageSelect]);
 
+  const useSampleImage = () => {
+    // Generate a clean sample SVG canvas rooftop
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 500;
+    const ctx = canvas.getContext('2d');
+    
+    // Background roof
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(0, 0, 800, 500);
+    
+    // Roof boundary grid
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(40, 40, 720, 420);
+    
+    // Water tank
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(200, 150, 45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('Water Tank', 165, 155);
+
+    // Solar panels
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(450, 100, 180, 120);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('Solar Array', 500, 165);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], 'sample_rooftop.png', { type: 'image/png' });
+        handleImageSelect(file);
+      }
+    });
+  };
+
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
@@ -67,12 +106,18 @@ export default function AssessmentPage() {
 
     try {
       const formData = new FormData();
-      formData.append('image', imageFile);
-      formData.append('location_json', JSON.stringify(location));
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+      formData.append('location_json', JSON.stringify({
+        city: location.city.trim() || 'Bangalore',
+        state: location.state.trim() || 'Karnataka',
+        country: location.country.trim() || 'India',
+      }));
       formData.append('roof_json', JSON.stringify({
         ...roof,
-        area_m2: parseFloat(roof.area_m2),
-        floors: parseInt(roof.floors),
+        area_m2: parseFloat(roof.area_m2) || 120,
+        floors: parseInt(roof.floors) || 1,
       }));
 
       // Simulate progress steps
@@ -82,26 +127,27 @@ export default function AssessmentPage() {
           clearInterval(progressInterval);
           return prev;
         });
-      }, 1500);
+      }, 900);
 
       const res = await assessmentService.analyze(formData);
       clearInterval(progressInterval);
       setAnalysisStep(6);
 
-      // Brief delay to show completion
+      // Transition to results
       setTimeout(() => {
-        navigate(`/results/${res.data.id}`, { state: { assessment: res.data } });
-      }, 800);
+        const assessmentData = res.data;
+        navigate(`/results/${assessmentData.id}`, { state: { assessment: assessmentData } });
+      }, 600);
     } catch (err) {
       setStep(3);
-      setError(err.response?.data?.detail || 'Analysis failed. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Analysis failed. Please try again.');
     }
   };
 
   // ─── Validation ──────────────────────────────────────
   const canProceed = () => {
-    if (step === 1) return !!imageFile;
-    if (step === 2) return location.city.trim().length > 0;
+    if (step === 1) return true; // Image optional or sampled
+    if (step === 2) return (location.city || '').trim().length > 0;
     if (step === 3) return parseFloat(roof.area_m2) > 0;
     return false;
   };
@@ -120,8 +166,8 @@ export default function AssessmentPage() {
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-display font-bold text-gray-900">New Assessment</h1>
-          <p className="text-gray-500 mt-2">Complete the steps below to analyze your rooftop</p>
+          <h1 className="text-3xl font-display font-bold text-gray-900">Rooftop Assessment</h1>
+          <p className="text-gray-500 mt-2">Get an AI-assisted rainwater harvesting feasibility evaluation</p>
         </div>
 
         {/* Step Indicator */}
@@ -167,31 +213,45 @@ export default function AssessmentPage() {
               <ImageIcon className="w-5 h-5 text-primary-600" />
               Rooftop Image
             </h2>
-            <p className="text-sm text-gray-500 mb-6">Upload an aerial or top-down view of your rooftop</p>
+            <p className="text-sm text-gray-500 mb-6">Upload an aerial photo or select a sample image</p>
 
             {!imagePreview ? (
-              <div
-                onDrop={handleDrop}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
-                  dragOver ? 'border-primary-400 bg-primary-50' : 'border-gray-300 hover:border-primary-300 hover:bg-gray-50'
-                }`}
-                onClick={() => document.getElementById('image-input').click()}
-              >
-                <Upload className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 font-medium mb-1">
-                  Drag & drop your rooftop image here
-                </p>
-                <p className="text-sm text-gray-400">or click to browse</p>
-                <p className="text-xs text-gray-300 mt-3">JPG, JPEG, PNG, WEBP • Max 10MB</p>
-                <input
-                  id="image-input"
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.webp"
-                  onChange={(e) => e.target.files[0] && handleImageSelect(e.target.files[0])}
-                  className="hidden"
-                />
+              <div>
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
+                    dragOver ? 'border-primary-400 bg-primary-50' : 'border-gray-300 hover:border-primary-300 hover:bg-gray-50'
+                  }`}
+                  onClick={() => document.getElementById('image-input').click()}
+                >
+                  <Upload className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-700 font-semibold mb-1">
+                    Drag & drop your rooftop image here
+                  </p>
+                  <p className="text-sm text-gray-400">or click to browse from device</p>
+                  <p className="text-xs text-gray-400 mt-3">JPG, PNG, WEBP • Max 10MB</p>
+                  <input
+                    id="image-input"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    onChange={(e) => e.target.files[0] && handleImageSelect(e.target.files[0])}
+                    className="hidden"
+                  />
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500">Don't have an aerial photo handy?</span>
+                  <button
+                    type="button"
+                    onClick={useSampleImage}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-xl transition-all"
+                  >
+                    <Sparkles className="w-4 h-4 text-primary-600" />
+                    Use Sample Rooftop
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="relative rounded-2xl overflow-hidden bg-gray-100">
@@ -217,8 +277,8 @@ export default function AssessmentPage() {
                   onChange={(e) => e.target.files[0] && handleImageSelect(e.target.files[0])}
                   className="hidden"
                 />
-                <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/50 backdrop-blur-sm text-white text-xs rounded-lg">
-                  {imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(1)} MB)
+                <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/60 backdrop-blur-sm text-white text-xs rounded-lg">
+                  {imageFile?.name || 'Rooftop Image'}
                 </div>
               </div>
             )}
@@ -230,45 +290,63 @@ export default function AssessmentPage() {
           <div className="card p-8 animate-fade-in">
             <h2 className="text-xl font-display font-bold text-gray-900 mb-1 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary-600" />
-              Location
+              Property Location
             </h2>
-            <p className="text-sm text-gray-500 mb-6">Where is the rooftop located?</p>
+            <p className="text-sm text-gray-500 mb-6">Rainfall patterns and water estimation depend on your location</p>
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="city" className="label">City *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
                 <input
-                  id="city"
                   type="text"
                   value={location.city}
                   onChange={(e) => setLocation({ ...location, city: e.target.value })}
+                  placeholder="e.g. Bangalore, Chennai, Mumbai, Delhi"
                   className="input-field"
-                  placeholder="e.g. Chennai"
-                  required
                 />
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="state" className="label">State</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">State / Province</label>
                   <input
-                    id="state"
                     type="text"
                     value={location.state}
                     onChange={(e) => setLocation({ ...location, state: e.target.value })}
+                    placeholder="e.g. Karnataka"
                     className="input-field"
-                    placeholder="e.g. Tamil Nadu"
                   />
                 </div>
                 <div>
-                  <label htmlFor="country" className="label">Country</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
                   <input
-                    id="country"
                     type="text"
                     value={location.country}
                     onChange={(e) => setLocation({ ...location, country: e.target.value })}
+                    placeholder="India"
                     className="input-field"
-                    placeholder="e.g. India"
                   />
+                </div>
+              </div>
+
+              {/* Preset quick cities */}
+              <div>
+                <p className="text-xs text-gray-400 mb-2">Quick Select City:</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Bangalore', 'Chennai', 'Mumbai', 'Delhi', 'Hyderabad', 'Kolkata', 'Pune'].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setLocation({ ...location, city: c })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        location.city.toLowerCase() === c.toLowerCase()
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -280,39 +358,43 @@ export default function AssessmentPage() {
           <div className="card p-8 animate-fade-in">
             <h2 className="text-xl font-display font-bold text-gray-900 mb-1 flex items-center gap-2">
               <Home className="w-5 h-5 text-primary-600" />
-              Rooftop Information
+              Rooftop Details
             </h2>
-            <p className="text-sm text-gray-500 mb-6">Tell us about your roof</p>
+            <p className="text-sm text-gray-500 mb-6">Specify roof size and characteristics</p>
 
             <div className="space-y-5">
               <div>
-                <label htmlFor="area" className="label flex items-center gap-1">
-                  <Ruler className="w-4 h-4" /> Roof Area (m²) *
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Roof Catchment Area (m²) *
                 </label>
-                <input
-                  id="area"
-                  type="number"
-                  value={roof.area_m2}
-                  onChange={(e) => setRoof({ ...roof, area_m2: e.target.value })}
-                  className="input-field"
-                  placeholder="e.g. 92"
-                  min="1"
-                  max="100000"
-                  step="0.1"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="10"
+                    max="10000"
+                    value={roof.area_m2}
+                    onChange={(e) => setRoof({ ...roof, area_m2: e.target.value })}
+                    placeholder="e.g. 120"
+                    className="input-field pr-12"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
+                    m²
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  120 m² ≈ 1,290 sq. ft (average residential house)
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="material" className="label flex items-center gap-1">
-                    <Layers className="w-4 h-4" /> Roof Material
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Roof Material
                   </label>
                   <select
-                    id="material"
                     value={roof.material}
                     onChange={(e) => setRoof({ ...roof, material: e.target.value })}
-                    className="select-field"
+                    className="input-field"
                   >
                     {ROOF_MATERIALS.map((m) => (
                       <option key={m} value={m}>{m}</option>
@@ -321,12 +403,13 @@ export default function AssessmentPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="type" className="label">Roof Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Roof Type
+                  </label>
                   <select
-                    id="type"
                     value={roof.roof_type}
                     onChange={(e) => setRoof({ ...roof, roof_type: e.target.value })}
-                    className="select-field"
+                    className="input-field"
                   >
                     {ROOF_TYPES.map((t) => (
                       <option key={t} value={t}>{t}</option>
@@ -337,29 +420,27 @@ export default function AssessmentPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="floors" className="label flex items-center gap-1">
-                    <Building2 className="w-4 h-4" /> Number of Floors
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Number of Floors
                   </label>
                   <input
-                    id="floors"
                     type="number"
+                    min="1"
+                    max="50"
                     value={roof.floors}
                     onChange={(e) => setRoof({ ...roof, floors: e.target.value })}
                     className="input-field"
-                    min="1"
-                    max="100"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="rwh" className="label flex items-center gap-1">
-                    <Droplets className="w-4 h-4" /> Existing RWH System?
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Existing RWH System?
                   </label>
                   <select
-                    id="rwh"
                     value={roof.existing_rwh}
                     onChange={(e) => setRoof({ ...roof, existing_rwh: e.target.value })}
-                    className="select-field"
+                    className="input-field"
                   >
                     {RWH_OPTIONS.map((o) => (
                       <option key={o} value={o}>{o}</option>
@@ -372,35 +453,40 @@ export default function AssessmentPage() {
         )}
 
         {/* Navigation Buttons */}
-        {step < 4 && (
-          <div className="flex justify-between mt-6">
-            {step > 1 ? (
-              <button onClick={() => setStep(step - 1)} className="btn-secondary">
-                Back
-              </button>
-            ) : <div />}
+        <div className="mt-6 flex items-center justify-between">
+          {step > 1 ? (
+            <button
+              onClick={() => setStep(step - 1)}
+              className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 transition-all"
+            >
+              Back
+            </button>
+          ) : <div />}
 
-            {step < 3 ? (
-              <button
-                onClick={() => setStep(step + 1)}
-                disabled={!canProceed()}
-                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Continue
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!canProceed()}
-                className="btn-primary !bg-gradient-to-r !from-eco-500 !to-eco-600 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Droplets className="w-5 h-5" />
-                Analyze Rooftop
-              </button>
-            )}
-          </div>
-        )}
+          {step < 3 ? (
+            <button
+              onClick={() => {
+                if (step === 1 && !imageFile) {
+                  useSampleImage();
+                }
+                setStep(step + 1);
+              }}
+              className="btn-primary"
+            >
+              Continue
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={!canProceed()}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/25"
+            >
+              <Droplets className="w-5 h-5" />
+              Analyze Rooftop
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
