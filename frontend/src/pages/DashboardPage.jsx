@@ -125,29 +125,29 @@ export default function DashboardPage() {
                   {stats.recent_assessments.map((a) => (
                     <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {new Date(a.created_at).toLocaleDateString()}
+                        {a.created_at ? new Date(a.created_at).toLocaleDateString() : 'Recent'}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {a.location.city}{a.location.state ? `, ${a.location.state}` : ''}
+                        {a.location?.city || 'Location'}{a.location?.state ? `, ${a.location.state}` : ''}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {a.roof_area_m2} m²
+                        {a.roof_area_m2 || 0} m²
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {a.harvestable_litres.toLocaleString()} L
+                        {(a.harvestable_litres || 0).toLocaleString()} L
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-bold text-gray-900">{a.score_total}</span>
+                        <span className="text-sm font-bold text-gray-900">{a.score_total || 0}</span>
                         <span className="text-xs text-gray-400">/100</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`badge text-xs ${
-                          a.score_category === 'Highly Suitable' ? 'badge-green' :
-                          a.score_category === 'Moderately Suitable' ? 'badge-amber' : 'badge-red'
+                          (a.score_category || '').includes('Excellent') || (a.score_category || '').includes('High') || (a.score_category || '').includes('Good') ? 'badge-green' :
+                          (a.score_category || '').includes('Mod') ? 'badge-amber' : 'badge-red'
                         }`}>
-                          {a.score_category}
+                          {a.score_category || 'Assessed'}
                         </span>
-                        {a.demo_mode && <span className="badge badge-amber text-xs ml-1">Demo</span>}
+                        {a.demo_mode && <span className="badge badge-amber text-xs ml-1">Live Demo</span>}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
