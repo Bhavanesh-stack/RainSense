@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
+from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.config import settings
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -41,21 +42,24 @@ def decode_access_token(token: str) -> dict:
         )
         return payload
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        )
+        return None
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
-    """Dependency to extract current user from JWT token."""
-    payload = decode_access_token(credentials.credentials)
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-        )
-    return {"user_id": user_id, "email": payload.get("email", ""), "name": payload.get("name", "")}
+    """Dependency to extract current user from JWT token or fallback to guest."""
+    if credentials and credentials.credentials:
+        payload = decode_access_token(credentials.credentials)
+        if payload and payload.get("user_id"):
+            return {
+                "user_id": payload["user_id"],
+                "email": payload.get("email", "guest@rainsense.ai"),
+                "name": payload.get("name", "User"),
+            }
+    # No auth required — default to guest user
+    return {
+        "user_id": "guest_user",
+        "email": "guest@rainsense.ai",
+        "name": "Guest User",
+    }

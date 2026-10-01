@@ -10,7 +10,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor — attach JWT token
+// Request interceptor — attach JWT token if available
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('rainsense_token');
   if (token) {
@@ -19,24 +19,11 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor — handle 401
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('rainsense_token');
-      localStorage.removeItem('rainsense_user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
-
-// ─── Auth ─────────────────────────────────────────────────
-export const authService = {
-  register: (data) => api.post('/api/auth/register', data),
-  login: (data) => api.post('/api/auth/login', data),
-};
 
 // ─── Assessments ──────────────────────────────────────────
 export const assessmentService = {

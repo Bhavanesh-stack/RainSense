@@ -1,20 +1,12 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { Link } from 'react-router-dom';
 import { 
-  Droplets, Menu, X, LogOut, LayoutDashboard, 
-  FileText, Home, Info, Zap, User 
+  Droplets, Menu, X, LayoutDashboard, 
+  FileText, Home, ArrowRight
 } from 'lucide-react';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { isAuthenticated, user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
@@ -31,7 +23,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-2">
             <NavLink to="/" icon={<Home className="w-4 h-4" />}>Home</NavLink>
             <a href="/#how-it-works" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all">
               How It Works
@@ -39,31 +31,14 @@ export default function Navbar() {
             <a href="/#features" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all">
               Features
             </a>
+            <NavLink to="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />}>Dashboard</NavLink>
 
-            {isAuthenticated ? (
-              <>
-                <NavLink to="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />}>Dashboard</NavLink>
-                <NavLink to="/assessment" icon={<FileText className="w-4 h-4" />}>New Assessment</NavLink>
-                <div className="ml-2 pl-2 border-l border-gray-200 flex items-center gap-2">
-                  <span className="text-sm text-gray-500 flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    {user?.name}
-                  </span>
-                  <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all" title="Logout">
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="ml-2 pl-2 border-l border-gray-200 flex items-center gap-2">
-                <Link to="/login" className="px-4 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-all">
-                  Login
-                </Link>
-                <Link to="/register" className="btn-primary !py-2 !px-4 !text-sm !rounded-lg">
-                  Get Started
-                </Link>
-              </div>
-            )}
+            <div className="ml-3 pl-3 border-l border-gray-200">
+              <Link to="/assessment" className="btn-primary !py-2 !px-4 !text-sm !rounded-xl inline-flex items-center gap-1.5 shadow-md shadow-primary-500/20">
+                <FileText className="w-4 h-4" />
+                New Assessment
+              </Link>
+            </div>
           </div>
 
           {/* Mobile toggle */}
@@ -80,20 +55,16 @@ export default function Navbar() {
             <MobileLink to="/" onClick={() => setMobileOpen(false)}>Home</MobileLink>
             <MobileLink to="/#how-it-works" onClick={() => setMobileOpen(false)}>How It Works</MobileLink>
             <MobileLink to="/#features" onClick={() => setMobileOpen(false)}>Features</MobileLink>
-            {isAuthenticated ? (
-              <>
-                <MobileLink to="/dashboard" onClick={() => setMobileOpen(false)}>Dashboard</MobileLink>
-                <MobileLink to="/assessment" onClick={() => setMobileOpen(false)}>New Assessment</MobileLink>
-                <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full text-left px-4 py-3 text-red-600 font-medium rounded-lg hover:bg-red-50">
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <MobileLink to="/login" onClick={() => setMobileOpen(false)}>Login</MobileLink>
-                <MobileLink to="/register" onClick={() => setMobileOpen(false)}>Get Started</MobileLink>
-              </>
-            )}
+            <MobileLink to="/dashboard" onClick={() => setMobileOpen(false)}>Dashboard</MobileLink>
+            <div className="pt-2">
+              <Link
+                to="/assessment"
+                onClick={() => setMobileOpen(false)}
+                className="btn-primary w-full text-center !py-3 !rounded-xl"
+              >
+                Start Assessment
+              </Link>
+            </div>
           </div>
         </div>
       )}
