@@ -7,7 +7,16 @@ import {
   getClientDashboardStats,
 } from './clientAssessment';
 
+// External backend URL (only used if explicitly configured with an external https://... host)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+// Detect if we are running in frontend-only mode (e.g. Vercel deployment or without backend)
+const isFrontendOnly =
+  !API_BASE_URL ||
+  (typeof window !== 'undefined' &&
+    (window.location.hostname.includes('vercel.app') ||
+      window.location.hostname.includes('netlify.app') ||
+      window.location.hostname.includes('github.io')));
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -15,15 +24,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Request interceptor
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('rainsense_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
 });
 
 function fallbackCalculation(formData) {
@@ -44,30 +44,18 @@ function fallbackCalculation(formData) {
   return { data: result, status: 200 };
 }
 
-// ─── Assessments Service with Guaranteed Vercel & Offline Fallback ───
+// ─── Assessments Service (Zero 405 Errors on Vercel) ─────────────────
 export const assessmentService = {
   analyze: async (formData) => {
-    // If running on Vercel without an external backend, compute immediately client-side
-    if (!API_BASE_URL || API_BASE_URL === 'http://localhost:8000') {
-      try {
-        const res = await api.post('/api/analyze', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 6000,
-        });
-        // Check if response is valid JSON object with id (not Vercel HTML rewrite)
-        if (res.data && typeof res.data === 'object' && res.data.id && res.data.score) {
-          return res;
-        }
-        return fallbackCalculation(formData);
-      } catch (err) {
-        return fallbackCalculation(formData);
-      }
+    // If deployed on Vercel or frontend-only mode, run client engine directly to prevent 405 errors
+    if (isFrontendOnly || !API_BASE_URL.startsWith('http')) {
+      return fallbackCalculation(formData);
     }
 
     try {
       const res = await api.post('/api/analyze', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000,
+        timeout: 20000,
       });
       if (res.data && typeof res.data === 'object' && res.data.id && res.data.score) {
         return res;
@@ -79,6 +67,9 @@ export const assessmentService = {
   },
 
   getAll: async () => {
+    if (isFrontendOnly || !API_BASE_URL.startsWith('http')) {
+      return { data: getAssessmentsFromLocalStorage(), status: 200 };
+    }
     try {
       const res = await api.get('/api/assessments');
       if (Array.isArray(res.data)) {
@@ -91,6 +82,11 @@ export const assessmentService = {
   },
 
   getById: async (id) => {
+    if (isFrontendOnly || !API_BASE_URL.startsWith('http')) {
+      const item = getAssessmentById(id);
+      if (item) return { data: item, status: 200 };
+      throw new Error('Assessment not found');
+    }
     try {
       const res = await api.get(`/api/assessments/${id}`);
       if (res.data && typeof res.data === 'object' && res.data.id) {
@@ -101,24 +97,27 @@ export const assessmentService = {
       throw new Error('Assessment not found');
     } catch (err) {
       const item = getAssessmentById(id);
-      if (item) {
-        return { data: item, status: 200 };
-      }
+      if (item) return { data: item, status: 200 };
       throw err;
     }
   },
 
   delete: async (id) => {
-    try {
-      await api.delete(`/api/assessments/${id}`);
-    } catch (err) {
-      // Ignore network error on delete
+    if (!isFrontendOnly && API_BASE_URL.startsWith('http')) {
+      try {
+        await api.delete(`/api/assessments/${id}`);
+      } catch (err) {
+        // ignore
+      }
     }
     deleteAssessmentFromLocalStorage(id);
     return { data: { success: true }, status: 200 };
   },
 
   getDashboard: async () => {
+    if (isFrontendOnly || !API_BASE_URL.startsWith('http')) {
+      return { data: getClientDashboardStats(), status: 200 };
+    }
     try {
       const res = await api.get('/api/dashboard');
       if (res.data && typeof res.data === 'object' && typeof res.data.total_assessments === 'number') {
@@ -134,24 +133,26 @@ export const assessmentService = {
 // ─── Reports Service ──────────────────────────────────────────────
 export const reportService = {
   download: async (assessmentId) => {
-    try {
-      const response = await api.get(`/api/reports/${assessmentId}`, {
-        responseType: 'blob',
-        timeout: 10000,
-      });
-      if (response.data && response.data.size > 1000) {
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `RainSense_Report_${assessmentId.slice(0, 8)}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-        return;
+    if (!isFrontendOnly && API_BASE_URL.startsWith('http')) {
+      try {
+        const response = await api.get(`/api/reports/${assessmentId}`, {
+          responseType: 'blob',
+          timeout: 10000,
+        });
+        if (response.data && response.data.size > 1000) {
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `RainSense_Report_${assessmentId.slice(0, 8)}.pdf`);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
+          return;
+        }
+      } catch (err) {
+        // Fallback
       }
-    } catch (err) {
-      // Fallback
     }
 
     const assessment = getAssessmentById(assessmentId);
